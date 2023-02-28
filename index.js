@@ -3,10 +3,10 @@ const app = express();
 app.use(express.json());
 const knex = require("knex");
 const knexPostgis = require("knex-postgis");
-const dotenv = require("dotenv");
 const polylineUtil = require("../TVtS_midlertidig_node_backend/flexible_polyline_util.js");
-const dbConfig = require("../TVtS_midlertidig_node_backend/db.config.js");
-dotenv.config();
+const cors = require("cors");
+
+app.use(cors());
 
 app.post("/api/generateRoute", async (req, res) => {
   const time = Date.now();
@@ -42,27 +42,31 @@ app.post("/api/generateRoute", async (req, res) => {
   await routeQueryF(hereResult.routes[1], db, summaryResult);
   await routeQueryF(hereResult.routes[2], db, summaryResult);
 
-  const qb = await db.withSchema('gis')
-  .into(db.raw('gis.route_contained_points(uag_id, route_id)'))
-  .insert(function() {
-    this.select('uag.id', 'routes.id')
-    .from('gis.summaries')
-    .join('gis.routes', 'summaries.id','routes.summary_id')
-    .join(db.raw('gis.uag on ST_CONTAINS(ST_Buffer(routes.geom, 20, \'endcap=round join=round\'), uag.geom)'))
-    .where('summaries.id', summaryResult[0].id.toString())
-    .groupByRaw('uag.id, routes.id')
-    
-  });
+  const qb = await db
+    .withSchema("gis")
+    .into(db.raw("gis.route_contained_points(uag_id, route_id)"))
+    .insert(function () {
+      this.select("uag.id", "routes.id")
+        .from("gis.summaries")
+        .join("gis.routes", "summaries.id", "routes.summary_id")
+        .join(
+          db.raw(
+            "gis.uag on ST_CONTAINS(ST_Buffer(routes.geom, 20, 'endcap=round join=round'), uag.geom)"
+          )
+        )
+        .where("summaries.id", summaryResult[0].id.toString())
+        .groupByRaw("uag.id, routes.id");
+    });
   console.log(qb.toString());
 
-  const response = summaryResult[0].id.toString();
+  const id = summaryResult[0].id.toString();
 
-  res.send({ response });
+  res.send({ id });
 });
 
 async function routeQueryF(route, db, summaryResult) {
   const st = knexPostgis(db);
-  
+
   const sql1 = await db
     .withSchema("gis")
     .insert({
@@ -75,7 +79,7 @@ async function routeQueryF(route, db, summaryResult) {
             .join(`, `)
             .toString()})`,
           4326
-        ), 
+        ),
         25832
       ),
       duration: route.sections[0].travelSummary.duration,
