@@ -42,22 +42,32 @@ app.post("/api/generateRoute", async (req, res) => {
   await routeQueryF(hereResult.routes[1], db, summaryResult);
   await routeQueryF(hereResult.routes[2], db, summaryResult);
 
-  const qb = await db
+  const bufferToRouteSQL = await db
     .withSchema("gis")
-    .into(db.raw("gis.route_contained_points(uag_id, route_id)"))
+    .into(db.raw("gis.buffered_routes(geom, route_id)"))
     .insert(function () {
-      this.select("uag.id", "routes.id")
+      this.select(
+        db.raw(
+          "ST_Buffer(routes.geom, 20, 'endcap=round join=round'), routes.id"
+        )
+      )
         .from("gis.summaries")
         .join("gis.routes", "summaries.id", "routes.summary_id")
-        .join(
-          db.raw(
-            "gis.uag on ST_CONTAINS(ST_Buffer(routes.geom, 20, 'endcap=round join=round'), uag.geom)"
-          )
-        )
-        .where("summaries.id", summaryResult[0].id.toString())
-        .groupByRaw("uag.id, routes.id");
+        .where("summaries.id", summaryResult[0].id.toString());
     });
-  console.log(qb.toString());
+
+  const categorizedRoutesSQL = await db
+    .withSchema("gis")
+    .into(db.raw("gis.categorized_routes(category, route_id)"))
+    .insert(function () {
+      this.select(db.raw("row_number() over(order by count(uag.*)), routes.id"))
+        .from("gis.summaries")
+        .join("gis.routes", "summaries.id", "routes.summary_id")
+        .join("gis.buffered_routes", "routes.id", "buffered_routes.route_id")
+        .join(db.raw("gis.uag on ST_CONTAINS(buffered_routes.geom, uag.geom)"))
+        .where("summaries.id", summaryResult[0].id.toString())
+        .groupByRaw("routes.id");
+    });
 
   const id = summaryResult[0].id.toString();
 
