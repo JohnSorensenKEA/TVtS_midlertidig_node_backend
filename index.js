@@ -75,6 +75,9 @@ app.post("/api/generateRoute", async (req, res) => {
 });
 
 async function routeQueryF(route, db, summaryResult) {
+  if(route === undefined) {
+    return;
+  }
   const st = knexPostgis(db);
 
   const sql1 = await db
