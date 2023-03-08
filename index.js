@@ -100,7 +100,7 @@ async function routeQueryF(route, db, summaryResult) {
     .into("routes");
 }
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 8082;
 
 app.listen(PORT, (error) => {
   console.log("Server is running on", PORT);
