@@ -39,6 +39,8 @@ function generateSQL(name1, severity, traffic, counter, kommune) {
     let tableName = `uag_${name1.toLowerCase()}${severityBool ? '_' + severity : ''}${trafficBool ? '_' + traffic : ''}${counterBool ? '_' + counter : ''}`;
 
   let sql1 = `
+drop table gis.${tableName};
+
 create table gis.${tableName} (
 	id serial primary key,
 	num int not null,
@@ -46,12 +48,11 @@ create table gis.${tableName} (
 );
 
 insert into gis.${tableName} (num, geom)
-select COUNT(u.id) as num_accidents, dme.geom from gis.dkn_100m_uag_count_relation dmucr
-join gis.dkn_100m_euref89 dme on dmucr.dkn_id = dme.id
-join gis.uag u on ST_CONTAINS(dme.geom, u.geom)
+select COUNT(u.id) as num_accidents, dme.geom from gis.dkn_100m_euref89 dme 
+join gis.uag u on ST_CONTAINS(dme.geom, st_translate(u.geom, -0.001, -0.001))
 left join gis.uag_kommune_relations ukr on u.id = ukr.uag_id 
 left join gis."Kommune" k on ukr.kommune_id = k.id
-where dmucr.id > 0 ${kommune ? 'and k.navn = \'' + name1 +' Kommune\'' : ''} ${severityBool ? ' and u.seriousness_id ' + severity_id : ''}${trafficBool ? ' and u.traffic_type_id ' + traffic_id : ''}${counterBool ? ' and u.counterparty_id ' + counter_id : ''}
+where dme.id > 0 ${kommune ? 'and k.navn = \'' + name1 +' Kommune\'' : ''} ${severityBool ? ' and u.seriousness_id ' + severity_id : ''}${trafficBool ? ' and u.traffic_type_id ' + traffic_id : ''}${counterBool ? ' and u.counterparty_id ' + counter_id : ''}
 group by dme.id;
 
 alter table gis.${tableName} 
