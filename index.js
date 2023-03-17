@@ -69,9 +69,21 @@ app.post("/api/generateRoute", async (req, res) => {
         .groupByRaw("routes.id");
     });
 
-  const id = summaryResult[0].id.toString();
+  const routeRequest = {
+    id: summaryResult[0].id.toString(),
+    mode: req.body.mode,
+          origin: {
+            lat: req.body.origin.lat,
+            lon: req.body.origin.lon,
+          },
+          destination: {
+            lat: req.body.destination.lat,
+            lon: req.body.destination.lon,
+          },
+          message: 'Routes successfully generated :>',
+  };
 
-  res.send({ id });
+  res.send(routeRequest);
 });
 
 async function routeQueryF(route, db, summaryResult) {
