@@ -5,6 +5,8 @@ const knex = require("knex");
 const knexPostgis = require("knex-postgis");
 const polylineUtil = require("../TVtS_midlertidig_node_backend/flexible_polyline_util.js");
 const cors = require("cors");
+const dbConfig = require("../TVtS_midlertidig_node_backend/db.config.js");
+const hereConfig = require("../TVtS_midlertidig_node_backend/here.config.js");
 
 app.use(cors());
 
@@ -12,7 +14,7 @@ app.post("/api/generateRoute", async (req, res) => {
   const time = Date.now();
   let hereResult = {};
   await fetch(
-    `https://router.hereapi.com/v8/routes?transportMode=${req.body.mode}&origin=${req.body.origin.lat},${req.body.origin.lon}&destination=${req.body.destination.lat},${req.body.destination.lon}&return=travelSummary,polyline&apikey=UmcH7dm4kGVIOe75j3xIX9SHiN_vLRVn-T1INKq-A-g&units=metric&alternatives=2`
+    `https://router.hereapi.com/v8/routes?transportMode=${req.body.mode}&origin=${req.body.origin.lat},${req.body.origin.lon}&destination=${req.body.destination.lat},${req.body.destination.lon}&return=travelSummary,polyline&apikey=${hereConfig.API_KEY}&units=metric&alternatives=2`
   )
     .then((response) => response.json())
     .then((data) => {
@@ -20,13 +22,13 @@ app.post("/api/generateRoute", async (req, res) => {
     });
 
   const db = knex({
-    client: "pg",
+    client: dbConfig.CLIENT,
     connection: {
-      host: "localhost",
-      port: 5434,
-      user: "postgres",
-      password: null,
-      database: "tvts",
+      host: dbConfig.HOST,
+      port: dbConfig.PORT,
+      user: dbConfig.USER,
+      password: dbConfig.PASSWORD,
+      database: dbConfig.DATABASE,
     },
   });
 
