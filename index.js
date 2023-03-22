@@ -92,6 +92,37 @@ async function routeQueryF(route, db, summaryResult) {
   if(route === undefined) {
     return;
   }
+
+  let preparedRoute = {
+    linestring: { polyline: undefined },
+    duration: 0,
+    length: 0,
+    mode: '',
+    summary_id: undefined
+  };
+  if(route.sections.length > 1) {
+    route.sections.forEach(section => {
+      preparedRoute.duration += section.travelSummary.duration;
+      preparedRoute.length += section.travelSummary.length;
+      preparedRoute.mode += `[${section.type}]`;
+
+      if(!preparedRoute.linestring.polyline) {
+        preparedRoute.linestring.polyline = polylineUtil.decode(section.polyline).polyline;
+      } {
+        preparedRoute.linestring.polyline = preparedRoute.linestring.polyline.concat(polylineUtil.decode(section.polyline).polyline);
+      }
+    })
+  } else {
+    preparedRoute = {
+      linestring: polylineUtil.decode(route.sections[0].polyline),
+      duration: route.sections[0].travelSummary.duration,
+      length: route.sections[0].travelSummary.length,
+      mode: route.sections[0].type
+    };
+  }
+  preparedRoute.summary_id = summaryResult[0].id;
+
+
   const st = knexPostgis(db);
 
   const sql1 = await db
@@ -100,8 +131,7 @@ async function routeQueryF(route, db, summaryResult) {
       here_id: route.sections[0].id,
       geom: st.transform(
         st.geomFromText(
-          `LINESTRING(${polylineUtil
-            .decode(route.sections[0].polyline)
+          `LINESTRING(${preparedRoute.linestring
             .polyline.map((i) => i[1] + ` ` + i[0])
             .join(`, `)
             .toString()})`,
@@ -109,10 +139,10 @@ async function routeQueryF(route, db, summaryResult) {
         ),
         25832
       ),
-      duration: route.sections[0].travelSummary.duration,
-      length: route.sections[0].travelSummary.length,
-      mode: route.sections[0].type,
-      summary_id: summaryResult[0].id,
+      duration: preparedRoute.duration,
+      length: preparedRoute.length,
+      mode: preparedRoute.mode,
+      summary_id: preparedRoute.summary_id,
     })
     .into("routes");
 }
